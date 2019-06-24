@@ -4,6 +4,8 @@ from AppiumLibrary.locators import ElementFinder
 from .keywordgroup import KeywordGroup
 from robot.libraries.BuiltIn import BuiltIn
 import ast
+import time
+import robot
 from unicodedata import normalize
 from selenium.webdriver.remote.webelement import WebElement
 
@@ -430,6 +432,25 @@ class _ElementKeywords(KeywordGroup):
         count = len(self._element_find("xpath=" + xpath, False, False))
         return str(count)
 
+    def get_matching_count(self, locator):
+        """Returns number of elements matching ``xpath``
+
+        One should not use the `xpath=` prefix for 'xpath'. XPath is assumed.
+
+        | Correct:  |
+        | ${count}  | Get Matching Count | xpath=//android.view.View[@text='Test'] |
+        | ${count}  | Get Matching Count | id='Test' |
+
+        If you wish to assert the number of matching elements, use
+        `Should Match X Times`.
+        `Should MAX X Times`.
+        `Should MIN X Times`.
+
+        New in AppiumLibrary 1.4.
+        """
+        count = len(self._element_find(locator, False, False))
+        return str(count)
+
     def text_should_be_visible(self, text, exact_match=False, loglevel='INFO'):
         """Verifies that element identified with text is visible.
 
@@ -465,6 +486,121 @@ class _ElementKeywords(KeywordGroup):
             raise AssertionError(error)
         self._info("Current page contains %s elements matching '%s'."
                    % (actual_xpath_count, xpath))
+
+    def should_match_x_times(self, locator, count, error=None, loglevel='INFO'):
+        """Verifies that the page contains the given number of elements located by the given ``xpath``.
+
+        One should not use the `xpath=` prefix for 'xpath'. XPath is assumed.
+
+        | *Correct:* |
+        | Xpath Should Match X Times | //android.view.View[@text='Test'] | 1 |
+        | Incorrect: |
+        | Xpath Should Match X Times | xpath=//android.view.View[@text='Test'] | 1 |
+
+        ``error`` can be used to override the default error message.
+
+        See `Log Source` for explanation about ``loglevel`` argument.
+
+        New in AppiumLibrary 1.4.
+        """
+        actual_count = len(self._element_find(locator, False, False))
+        if int(actual_count) != int(count):
+            if not error:
+                error = "locator %s should have matched %s times but matched %s times"\
+                            %(locator, count, actual_count)
+            self.log_source(loglevel)
+            raise AssertionError(error)
+        self._info("Current page contains %s elements matching '%s'."
+                   % (actual_count, locator))
+
+    def should_max_x_times(self, locator, count, error=None, loglevel='INFO'):
+        """Verifies that the page contains the given number of elements located by the given ``xpath``.
+
+        One should not use the `xpath=` prefix for 'xpath'. XPath is assumed.
+
+        | *Correct:* |
+        | Xpath Should Match X Times | //android.view.View[@text='Test'] | 1 |
+        | Incorrect: |
+        | Xpath Should Match X Times | xpath=//android.view.View[@text='Test'] | 1 |
+
+        ``error`` can be used to override the default error message.
+
+        See `Log Source` for explanation about ``loglevel`` argument.
+
+        New in AppiumLibrary 1.4.
+        """
+        actual_xpath_count = len(self._element_find(locator, False, False))
+        if int(actual_xpath_count) <= int(count):
+            if not error:
+                error = "locator %s should have matched %s times but matched %s times"\
+                            %(locator, count, actual_xpath_count)
+            self.log_source(loglevel)
+            raise AssertionError(error)
+        self._info("Current page contains %s elements matching '%s'."
+                   % (actual_xpath_count, locator))
+
+    def should_min_x_times(self, locator, count, error=None, loglevel='INFO'):
+        """Verifies that the page contains the given number of elements located by the given ``xpath``.
+
+        One should not use the `xpath=` prefix for 'xpath'. XPath is assumed.
+
+        | *Correct:* |
+        | Xpath Should Match X Times | //android.view.View[@text='Test'] | 1 |
+        | Incorrect: |
+        | Xpath Should Match X Times | xpath=//android.view.View[@text='Test'] | 1 |
+
+        ``error`` can be used to override the default error message.
+
+        See `Log Source` for explanation about ``loglevel`` argument.
+
+        New in AppiumLibrary 1.4.
+        """
+        actual_xpath_count = len(self._element_find(locator, False, False))
+        if int(actual_xpath_count) >= int(count):
+            if not error:
+                error = "Xpath %s should have matched %s times but matched %s times"\
+                            %(xpath, count, actual_xpath_count)
+            self.log_source(loglevel)
+            raise AssertionError(error)
+        self._info("Current page contains %s elements matching '%s'."
+                   % (actual_xpath_count, locator))
+
+    def click_element_if_contain(self, locator, timeout=None):
+        timeout = robot.utils.timestr_to_secs(timeout) if timeout is not None else self._timeout_in_secs
+        maxtime = time.time() + timeout
+        while True:
+                ele = self._element_find(locator, True, False)
+                if ele is not None:
+                    ele.click()
+                    self._info("Sucess Click the element %s " % locator)
+                    break
+                if time.time() > maxtime:
+                    self._info("Can not Click the element %s " % locator)
+                    break
+                time.sleep(0.2)
+
+    def swipe_unitl_element_visable(self, locator, direct, timeout=30):
+        timeout = robot.utils.timestr_to_secs(timeout) if timeout is not None else self._timeout_in_secs
+        maxtime = time.time() + timeout
+        while True:
+            time.sleep(0.5)
+            if self._is_visible(locator):
+                self._info("the element %s is viable,and the direct is %s" % (locator, direct))
+                break
+            else:
+                if direct.lower() == 'up':
+                    self.swipe_by_percent(50,80,50, 30)
+                elif direct.lower() == 'down':
+                    self.swipe_by_percent(50,30,50, 80)
+                elif direct.lower() == 'left':
+                    self.swipe_by_percent(80,50,30, 50)
+                else:
+                    self.swipe_by_percent(30,50,90, 50)
+            if time.time() > maxtime:
+                self._info("the element %s is not viable,and the direct is %s" % (locator, direct))
+                raise  AssertionError("the element %s is not viable,and the direct is %s" % (locator, direct))
+
+
 
     # Private
 
@@ -572,6 +708,8 @@ class _ElementKeywords(KeywordGroup):
                 return elements[0]
         elif isinstance(locator, WebElement):
             elements = [locator]
+            if first_only:
+                return locator
         # do some other stuff here like deal with list of webelements
         # ... or raise locator/element specific error if required
         return elements

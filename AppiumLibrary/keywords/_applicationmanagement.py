@@ -314,10 +314,16 @@ class _ApplicationManagementKeywords(KeywordGroup):
         """
         self._current_application().get(url)
 
-    def get_capability(self, capability_name):
+    def get_capability(self, capability_name=None):
         """
         Return the desired capability value by desired capability name
         """
+        if capability_name is None:
+            try:
+                capability = self._current_application().desired_capabilities
+            except Exception as e:
+                raise e
+            return capability
         try:
             capability = self._current_application().capabilities[capability_name]
         except Exception as e:
